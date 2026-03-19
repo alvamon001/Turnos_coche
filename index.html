@@ -3,16 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Turno coche</title>
+<title>Turnos coche</title>
+
 <style>
 body { font-family: Arial; padding: 20px; background: #f5f5f5; }
 .card { background: white; padding: 15px; margin-top: 10px; border-radius: 10px; }
-button { padding: 10px; margin: 5px 0; width: 100%; font-size: 16px; }
+button { padding: 12px; margin-top: 10px; width: 100%; font-size: 16px; }
+.result { font-size: 22px; text-align: center; font-weight: bold; padding: 10px; }
 </style>
 </head>
+
 <body>
 
-<h2>🚗 Turno coche</h2>
+<h2>🚗 Turnos coche</h2>
 
 <div class="card">
 <p><strong>Quién va hoy:</strong></p>
@@ -23,47 +26,164 @@ button { padding: 10px; margin: 5px 0; width: 100%; font-size: 16px; }
 </div>
 
 <div class="card">
+<div id="resultado" class="result">Pulsa calcular</div>
 <button onclick="calcular()">👉 Calcular quién conduce</button>
-<p id="resultado"></p>
+<button onclick="registrar()">Registrar conductor</button>
+<button onclick="reiniciar()">Reiniciar datos</button>
 </div>
 
 <div class="card">
-<button onclick="registrar()">Registrar conductor</button>
+<h3>Resumen</h3>
+<div id="resumen"></div>
+</div>
+
+<div class="card">
+<h3>Histórico</h3>
+<ul id="historial"></ul>
 </div>
 
 <script>
-let data = {
- "Álvaro": {p:0,c:0},
- "Jorge": {p:0,c:0},
- "Yaisa": {p:0,c:0},
- "Fani": {p:0,c:0}
-};
 
-let elegido = null;
+// 👇 PERSONAS
+const PEOPLE = ["Álvaro", "Jorge", "Yaisa", "Fani"];
 
-function getSelected(){
- return Array.from(document.querySelectorAll("input:checked")).map(e=>e.value);
+// 👇 FRASES RANDOM
+const FRASES = [
+  "Hoy te toca pringar 🚗💨",
+  "No te escaquees, que te hemos pillado 😏",
+  "Gasolina y al volante campeón ⛽",
+  "Hoy invitas tú al viaje 😎",
+  "A conducir, que ya te tocaba 😂",
+  "El destino ha hablado… y te ha jodido 🤣",
+  "No mires atrás, conduce 🔥",
+  "Te ha tocado por listo 😜",
+  "Hoy eres el Uber oficial 🚕",
+  "Mala suerte amigo… volante para ti 😬"
+];
+
+const STORAGE = "turnos_coche_v1";
+
+let propuesta = null;
+
+// 📦 CARGAR DATOS
+function cargar() {
+  let data = localStorage.getItem(STORAGE);
+  if (!data) return crearBase();
+  return JSON.parse(data);
 }
 
-function ratio(x){
- return x.p==0?0:x.c/x.p;
+// 🆕 CREAR BASE
+function crearBase() {
+  let obj = { people:{}, history:[] };
+  PEOPLE.forEach(p => obj.people[p] = { participa:0, conduce:0 });
+  return obj;
 }
 
-function calcular(){
- let hoy = getSelected();
- let lista = hoy.map(n=>({n, r:ratio(data[n])}));
- lista.sort((a,b)=>a.r-b.r);
- elegido = lista[0].n;
- document.getElementById("resultado").innerText="Conduce: "+elegido;
+let state = cargar();
+
+// 💾 GUARDAR
+function guardar() {
+  localStorage.setItem(STORAGE, JSON.stringify(state));
 }
 
-function registrar(){
- if(!elegido) return;
- let hoy = getSelected();
- hoy.forEach(n=>data[n].p++);
- data[elegido].c++;
- alert("Registrado: "+elegido);
+// 👥 QUIÉN VA HOY
+function seleccionados() {
+  return Array.from(document.querySelectorAll("input:checked")).map(e => e.value);
 }
+
+// 📊 RATIO
+function ratio(p) {
+  let d = state.people[p];
+  if (d.participa === 0) return 0;
+  return d.conduce / d.participa;
+}
+
+// 🚗 CALCULAR
+function calcular() {
+  let hoy = seleccionados();
+  if (hoy.length === 0) return;
+
+  let lista = hoy.map(p => ({
+    nombre: p,
+    r: ratio(p),
+    c: state.people[p].conduce,
+    pa: state.people[p].participa
+  }));
+
+  lista.sort((a,b)=>{
+    if (a.r !== b.r) return a.r - b.r;
+    if (a.c !== b.c) return a.c - b.c;
+    if (a.pa !== b.pa) return a.pa - b.pa;
+    return a.nombre.localeCompare(b.nombre);
+  });
+
+  propuesta = {
+    conductor: lista[0].nombre,
+    asistentes: hoy
+  };
+
+  let frase = FRASES[Math.floor(Math.random()*FRASES.length)];
+
+  document.getElementById("resultado").innerText =
+    propuesta.conductor + " 😏\n" + frase;
+}
+
+// ✅ REGISTRAR
+function registrar() {
+  if (!propuesta) return;
+
+  propuesta.asistentes.forEach(p => state.people[p].participa++);
+  state.people[propuesta.conductor].conduce++;
+
+  let fecha = new Date().toLocaleDateString();
+  state.history.push({
+    fecha,
+    conductor: propuesta.conductor,
+    asistentes: propuesta.asistentes
+  });
+
+  guardar();
+  render();
+
+  document.getElementById("resultado").innerText =
+    "Registrado: " + propuesta.conductor;
+
+  propuesta = null;
+}
+
+// 🔄 REINICIAR
+function reiniciar() {
+  if (!confirm("¿Seguro?")) return;
+  state = crearBase();
+  guardar();
+  render();
+}
+
+// 📊 RENDER
+function render() {
+  let resumen = document.getElementById("resumen");
+  let historial = document.getElementById("historial");
+
+  resumen.innerHTML = "";
+  historial.innerHTML = "";
+
+  PEOPLE.forEach(p => {
+    let d = state.people[p];
+    resumen.innerHTML += `
+      <p>${p}: conduce ${d.conduce} / participa ${d.participa}</p>
+    `;
+  });
+
+  state.history.slice().reverse().forEach(h => {
+    historial.innerHTML += `
+      <li>${h.fecha} - ${h.conductor} condujo (${h.asistentes.join(", ")})</li>
+    `;
+  });
+}
+
+// INIT
+render();
+
 </script>
 
 </body>
