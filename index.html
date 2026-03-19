@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turno coche</title>
+<style>
+body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+.card { background: white; padding: 15px; margin-top: 10px; border-radius: 10px; }
+button { padding: 10px; margin: 5px 0; width: 100%; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<h2>🚗 Turno coche</h2>
+
+<div class="card">
+<p><strong>Quién va hoy:</strong></p>
+<label><input type="checkbox" value="Álvaro" checked> Álvaro</label><br>
+<label><input type="checkbox" value="Jorge" checked> Jorge</label><br>
+<label><input type="checkbox" value="Yaisa" checked> Yaisa</label><br>
+<label><input type="checkbox" value="Fani" checked> Fani</label>
+</div>
+
+<div class="card">
+<button onclick="calcular()">👉 Calcular quién conduce</button>
+<p id="resultado"></p>
+</div>
+
+<div class="card">
+<button onclick="registrar()">Registrar conductor</button>
+</div>
+
+<script>
+let data = {
+ "Álvaro": {p:0,c:0},
+ "Jorge": {p:0,c:0},
+ "Yaisa": {p:0,c:0},
+ "Fani": {p:0,c:0}
+};
+
+let elegido = null;
+
+function getSelected(){
+ return Array.from(document.querySelectorAll("input:checked")).map(e=>e.value);
+}
+
+function ratio(x){
+ return x.p==0?0:x.c/x.p;
+}
+
+function calcular(){
+ let hoy = getSelected();
+ let lista = hoy.map(n=>({n, r:ratio(data[n])}));
+ lista.sort((a,b)=>a.r-b.r);
+ elegido = lista[0].n;
+ document.getElementById("resultado").innerText="Conduce: "+elegido;
+}
+
+function registrar(){
+ if(!elegido) return;
+ let hoy = getSelected();
+ hoy.forEach(n=>data[n].p++);
+ data[elegido].c++;
+ alert("Registrado: "+elegido);
+}
+</script>
+
+</body>
+</html>
